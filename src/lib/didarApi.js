@@ -107,13 +107,23 @@ export function getJamatKhanaIds() {
   return Array.isArray(payload?.JamatKhanaIds) ? payload.JamatKhanaIds : []
 }
 
-export function isAuthorizedForFamily(familyId) {
+export function isAuthorizedForJK(jamatKhanaId) {
   const ids = getJamatKhanaIds()
-  const fam = familyId.trim().toUpperCase()
-  return ids.some((jkId) => {
-    const prefix = jkId.match(/^[A-Za-z]+/)?.[0]?.toUpperCase()
-    return prefix && fam.startsWith(prefix)
-  })
+  if (!jamatKhanaId) return false
+  const normalise = (v) => v.replace(/[^A-Z0-9]/g, '').toUpperCase()
+  const target = normalise(jamatKhanaId)
+  return ids.some((jkId) => normalise(jkId) === target)
+}
+
+export async function fetchFormById(formId) {
+  const base = getApiBase()
+  const r = await didarFetch(`${base}/forms/${encodeURIComponent(formId.trim())}`, { method: 'GET' })
+  const data = await r.json().catch(() => null)
+  if (!r.ok) {
+    const errObj = data && typeof data === 'object' ? data : {}
+    throw new Error(formatHttpError(r, errObj))
+  }
+  return data
 }
 
 export async function fetchFormsByCnic(cnic) {

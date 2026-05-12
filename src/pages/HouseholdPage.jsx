@@ -4,10 +4,11 @@ import {
   clearTokens,
   fetchRegistrations,
   fetchFormsByCnic,
+  fetchFormById,
   fetchWristbandIssuances,
   fetchEvents,
   resolveEventName,
-  isAuthorizedForFamily,
+  isAuthorizedForJK,
   // approveMember,
 } from '../lib/didarApi'
 
@@ -15,6 +16,7 @@ export default function HouseholdPage() {
   const navigate = useNavigate()
   const [searchInput, setSearchInput] = useState('')
   const [resolvedFamilyId, setResolvedFamilyId] = useState('')
+  const [formData, setFormData] = useState(null)
   const [message, setMessage] = useState('')
   const [messageIsError, setMessageIsError] = useState(false)
   const [rows, setRows] = useState(null)
@@ -45,9 +47,11 @@ export default function HouseholdPage() {
     setRows(null)
     setWristbandMap({})
     setResolvedFamilyId('')
+    setFormData(null)
 
     try {
       let familyId = input
+      let form = null
 
       if (isCnic(input)) {
         setOk('Looking up CNIC…')
@@ -63,10 +67,16 @@ export default function HouseholdPage() {
         }
       }
 
-      if (!isAuthorizedForFamily(familyId)) {
+      setOk('Loading household form…')
+      form = await fetchFormById(familyId)
+
+      const jkId = form?.JamatKhanaId || ''
+      if (!isAuthorizedForJK(jkId)) {
         setErr('Not authorized to view this household.')
         return
       }
+
+      setFormData(form)
 
       setResolvedFamilyId(familyId)
 
@@ -168,54 +178,60 @@ export default function HouseholdPage() {
         <div className="ok">Household ID: <strong>{resolvedFamilyId}</strong></div>
       ) : null}
 
-      {rows && rows.length > 0 ? (
-        <table className="tbl">
-          <thead>
-            <tr>
-              <th>Registration Id</th>
-              <th>Family member Id</th>
-              <th>Family member</th>
-              <th>CNIC</th>
-              <th>Decision status</th>
-              <th>Wristband</th>
-              <th>QR Value</th>
-              <th>Event</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => {
-              const id = row.Id ?? row.id
-              const memId = row.FamilyMemberId ?? row.familyMemberId ?? ''
-              const stat = row.ApprovalStatus || row.approval_status || ''
-              const wbData = wristbandMap[String(memId)]
-              const wbLabel = wbData == null ? '—' : wbData.wristbandChoice?.toLowerCase() === 'yes' ? 'Applied' : 'Not Applied'
-              const qrVal = wbData?.qrScannedValue || ''
-              const eventName = resolveEventName(qrVal, events)
-              return (
-                <tr key={`${id}-${memId}`}>
-                  <td>{id}</td>
-                  <td>{memId}</td>
-                  <td>{row.FullName || ''}</td>
-                  <td>{row.CNIC || ''}</td>
-                  <td>{stat}</td>
-                  <td>{wbLabel}</td>
-                  <td>{qrVal || '—'}</td>
-                  <td>{eventName}</td>
-                  {/* <td className="row-actions">
-                    <button
-                      type="button"
-                      disabled={approved || busy}
-                      onClick={() => void handleApprove(famRow, memId)}
-                    >
-                      {busy ? '…' : 'Approve'}
-                    </button>
-                  </td> */}
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
+      {formData ? (
+        <div className="form-details">
+          <h2>Household Info</h2>
+          <table className="tbl">
+            <tbody>
+              <tr><td><strong>Form ID</strong></td><td>{formData.FormId}</td></tr>
+              <tr><td><strong>Jamat Khana</strong></td><td>{formData.JamatKhanaId}</td></tr>
+              <tr><td><strong>Household CNIC</strong></td><td>{formData.HouseHoldCNIC}</td></tr>
+              <tr><td><strong>Form Status</strong></td><td>{formData.FormStatus}</td></tr>
+              <tr><td><strong>Created</strong></td><td>{formData.CreatedAt}</td></tr>
+              <tr><td><strong>Updated</strong></td><td>{formData.UpdatedAt}</td></tr>
+            </tbody>
+          </table>
+
+          {formData.FamilyMembers?.length > 0 ? (
+            <>
+              <h2>Family Members</h2>
+              <table className="tbl">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>CNIC</th>
+                    <th>Intent</th>
+                    <th>Wristband</th>
+                    <th>QR</th>
+                    <th>Event</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {formData.FamilyMembers.map((m) => {
+                    const reg = rows?.find((r) => String(r.FamilyMemberId ?? r.familyMemberId) === String(m.Id))
+                    const intent = reg?.ApprovalStatus || reg?.approval_status || '—'
+                    const wbData = wristbandMap[String(m.Id)]
+                    const wbLabel = wbData == null ? '—' : wbData.wristbandChoice?.toLowerCase() === 'yes' ? 'Applied' : 'Not Applied'
+                    const qrVal = wbData?.qrScannedValue || ''
+                    const eventName = resolveEventName(qrVal, events)
+                    return (
+                      <tr key={m.Id}>
+                        <td>{m.FullName}</td>
+                        <td>{m.IdNumber}</td>
+                        <td>{intent}</td>
+                        <td>{wbLabel}</td>
+                        <td>{qrVal || '—'}</td>
+                        <td>{eventName}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </>
+          ) : null}
+        </div>
       ) : null}
+
     </div>
   )
 }
