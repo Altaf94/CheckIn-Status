@@ -52,8 +52,10 @@ export default function HouseholdPage() {
     try {
       let familyId = input
       let form = null
+      let searchedCnic = null
 
       if (isCnic(input)) {
+        searchedCnic = input
         setOk('Looking up CNIC…')
         const forms = await fetchFormsByCnic(input)
         if (!forms.length) {
@@ -74,6 +76,10 @@ export default function HouseholdPage() {
       if (!isAuthorizedForJK(jkId)) {
         setErr('Not authorized to view this household.')
         return
+      }
+
+      if (searchedCnic && form.FamilyMembers) {
+        form = { ...form, FamilyMembers: form.FamilyMembers.filter((m) => m.IdNumber === searchedCnic) }
       }
 
       setFormData(form)
