@@ -101,8 +101,7 @@ export default function HouseholdPage() {
       setEvents(evList)
 
       setRows(list)
-      if (!list.length) setOk('No registrations for this household.')
-      else setOk(`${list.length} registration(s) for ${familyId}.`)
+      setMessage('')
     } catch (e) {
       if (e instanceof Error && e.message === 'SESSION_EXPIRED') {
         navigate('/login', { replace: true })
