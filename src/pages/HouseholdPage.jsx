@@ -5,6 +5,8 @@ import {
   fetchRegistrations,
   fetchFormsByCnic,
   fetchWristbandIssuances,
+  fetchEvents,
+  resolveEventName,
   isAuthorizedForFamily,
   // approveMember,
 } from '../lib/didarApi'
@@ -17,6 +19,7 @@ export default function HouseholdPage() {
   const [messageIsError, setMessageIsError] = useState(false)
   const [rows, setRows] = useState(null)
   const [wristbandMap, setWristbandMap] = useState({})
+  const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(false)
   // const [approvingKey, setApprovingKey] = useState(null)
 
@@ -75,10 +78,17 @@ export default function HouseholdPage() {
       const wbLookup = {}
       if (wb?.members && Array.isArray(wb.members)) {
         for (const m of wb.members) {
-          wbLookup[String(m.familyMemberId)] = m.wristbandChoice
+          wbLookup[String(m.familyMemberId)] = {
+            wristbandChoice: m.wristbandChoice,
+            qrScannedValue: m.qrScannedValue || '',
+          }
         }
       }
       setWristbandMap(wbLookup)
+
+      setOk('Loading events…')
+      const evList = await fetchEvents()
+      setEvents(evList)
 
       setRows(list)
       if (!list.length) setOk('No registrations for this household.')
@@ -168,6 +178,8 @@ export default function HouseholdPage() {
               <th>CNIC</th>
               <th>Decision status</th>
               <th>Wristband</th>
+              <th>QR Value</th>
+              <th>Event</th>
             </tr>
           </thead>
           <tbody>
@@ -175,8 +187,10 @@ export default function HouseholdPage() {
               const id = row.Id ?? row.id
               const memId = row.FamilyMemberId ?? row.familyMemberId ?? ''
               const stat = row.ApprovalStatus || row.approval_status || ''
-              const wbChoice = wristbandMap[String(memId)]
-              const wbLabel = wbChoice == null ? '—' : wbChoice.toLowerCase() === 'yes' ? 'Applied' : 'Not Applied'
+              const wbData = wristbandMap[String(memId)]
+              const wbLabel = wbData == null ? '—' : wbData.wristbandChoice?.toLowerCase() === 'yes' ? 'Applied' : 'Not Applied'
+              const qrVal = wbData?.qrScannedValue || ''
+              const eventName = resolveEventName(qrVal, events)
               return (
                 <tr key={`${id}-${memId}`}>
                   <td>{id}</td>
@@ -185,6 +199,8 @@ export default function HouseholdPage() {
                   <td>{row.CNIC || ''}</td>
                   <td>{stat}</td>
                   <td>{wbLabel}</td>
+                  <td>{qrVal || '—'}</td>
+                  <td>{eventName}</td>
                   {/* <td className="row-actions">
                     <button
                       type="button"

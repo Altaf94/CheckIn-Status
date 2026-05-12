@@ -159,6 +159,33 @@ export async function fetchWristbandIssuances(familyId) {
   return data
 }
 
+export async function fetchEvents() {
+  const base = getApiBase()
+  const r = await didarFetch(`${base}/events/`, { method: 'GET' })
+  const data = await r.json().catch(() => null)
+  if (!r.ok) {
+    const errObj = data && typeof data === 'object' ? data : {}
+    throw new Error(formatHttpError(r, errObj))
+  }
+  if (!Array.isArray(data)) throw new Error('Expected a JSON array from the events API')
+  return data
+}
+
+export function resolveEventName(qrValue, events) {
+  if (!qrValue) return '—'
+  const qr = Number(qrValue)
+  if (!qr) return '—'
+  for (const ev of events) {
+    const start = Number(ev.QRCodeStartSeries)
+    const end = Number(ev.QRCodeEndSeries)
+    if (qr >= start && qr <= end) return ev.Name
+    const cStart = Number(ev.ChairQRCodeStartSeries)
+    const cEnd = Number(ev.ChairQRCodeEndSeries)
+    if (qr >= cStart && qr <= cEnd) return ev.Name
+  }
+  return '—'
+}
+
 export async function approveMember(familyId, familyMemberId) {
   const base = getApiBase()
   const outbound = {
