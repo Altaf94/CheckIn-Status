@@ -178,7 +178,14 @@ export default function HouseholdPage() {
         </button>
       </div>
 
-      {message ? <div className={messageIsError ? 'err' : 'ok'}>{message}</div> : null}
+      {loading && (
+        <div className="loading-overlay">
+          <div className="spinner"></div>
+          <span className="loading-text">{message || 'Loading…'}</span>
+        </div>
+      )}
+
+      {!loading && message ? <div className={messageIsError ? 'err' : 'ok'}>{message}</div> : null}
       {resolvedFamilyId && resolvedFamilyId !== searchInput.trim() ? (
         <div className="ok">Household ID: <strong>{resolvedFamilyId}</strong></div>
       ) : null}
@@ -206,6 +213,7 @@ export default function HouseholdPage() {
                     <th>Name</th>
                     <th>CNIC</th>
                     <th>Intent</th>
+                    <th>Intent Event</th>
                     <th>Wristband</th>
                     <th>QR</th>
                     <th>Event</th>
@@ -215,6 +223,8 @@ export default function HouseholdPage() {
                   {formData.FamilyMembers.map((m) => {
                     const reg = rows?.find((r) => String(r.FamilyMemberId ?? r.familyMemberId) === String(m.Id))
                     const intent = reg?.ApprovalStatus || reg?.approval_status || '—'
+                    const intentEventId = reg?.EventId ?? reg?.eventId
+                    const intentEventName = intentEventId != null ? (events.find(e => e.Id === intentEventId)?.Name || '—') : '—'
                     const wbData = wristbandMap[String(m.Id)]
                     const wbLabel = wbData == null ? '—' : wbData.wristbandChoice?.toLowerCase() === 'yes' ? 'Applied' : 'Not Applied'
                     const qrVal = wbData?.qrScannedValue || ''
@@ -224,6 +234,7 @@ export default function HouseholdPage() {
                         <td>{m.FullName}</td>
                         <td>{m.IdNumber}</td>
                         <td>{intent}</td>
+                        <td>{intentEventName}</td>
                         <td>{wbLabel}</td>
                         <td>{qrVal || '—'}</td>
                         <td>{eventName}</td>
