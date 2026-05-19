@@ -39,7 +39,7 @@ export default function HouseholdPage() {
   const handleSearch = useCallback(async () => {
     const input = searchInput.trim()
     if (!input) {
-      setErr('Enter a Household ID or CNIC.')
+      setErr('Enter a Form ID or CNIC.')
       return
     }
 
@@ -153,101 +153,148 @@ export default function HouseholdPage() {
   }
 
   return (
-    <div className="layout">
-      <p className="topbar">
-        <button type="button" className="linkish" onClick={logout}>
+    <div className="hp-layout">
+
+      {/* ── Top bar ── */}
+      <header className="hp-header">
+        <div className="hp-header-brand">
+          <div className="hp-header-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+              <rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3m0 4h4v-4m-4 0h4"/>
+            </svg>
+          </div>
+          <div>
+            <div className="hp-header-title">GBC QR Checker</div>
+            <div className="hp-header-sub">Family Verification Portal</div>
+          </div>
+        </div>
+        <button type="button" className="hp-logout" onClick={logout}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
           Log out
         </button>
-      </p>
-      <h1>Didar household utility</h1>
+      </header>
 
-      <label htmlFor="search_input">Household ID or CNIC</label>
-      <input
-        id="search_input"
-        type="text"
-        placeholder="e.g. JK001-39366661 or 3474744884844"
-        autoComplete="off"
-        value={searchInput}
-        onChange={(e) => setSearchInput(e.target.value)}
-        onKeyDown={onKeyDown}
-      />
-
-      <div className="actions">
-        <button type="button" className="btn-primary" onClick={() => void handleSearch()} disabled={loading}>
-          {loading ? 'Searching…' : 'Search'}
-        </button>
+      {/* ── Search card ── */}
+      <div className="hp-search-card">
+        <label htmlFor="search_input" className="hp-search-label">Form ID or CNIC</label>
+        <div className="hp-search-row">
+          <input
+            id="search_input"
+            type="text"
+            className="hp-search-input"
+            placeholder="e.g. JK001-39366661 or 3474744884844"
+            autoComplete="off"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onKeyDown={onKeyDown}
+          />
+          <button type="button" className="hp-search-btn" onClick={() => void handleSearch()} disabled={loading}>
+            {loading ? (
+              <><span className="login-btn-spinner" /> Searching…</>
+            ) : (
+              <>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                Search
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
+      {/* ── Status messages ── */}
       {loading && (
         <div className="loading-overlay">
-          <div className="spinner"></div>
+          <div className="spinner" />
           <span className="loading-text">{message || 'Loading…'}</span>
         </div>
       )}
-
-      {!loading && message ? <div className={messageIsError ? 'err' : 'ok'}>{message}</div> : null}
+      {!loading && message ? (
+        <div className={messageIsError ? 'hp-msg hp-msg-err' : 'hp-msg hp-msg-ok'}>{message}</div>
+      ) : null}
       {resolvedFamilyId && resolvedFamilyId !== searchInput.trim() ? (
-        <div className="ok">Household ID: <strong>{resolvedFamilyId}</strong></div>
+        <div className="hp-msg hp-msg-ok">
+           Form ID: <strong>{resolvedFamilyId}</strong>
+        </div>
       ) : null}
 
       {formData ? (
-        <div className="form-details">
-          <h2>Household Info</h2>
-          <table className="tbl">
-            <tbody>
-              <tr><td><strong>Form ID</strong></td><td>{formData.FormId}</td></tr>
-              <tr><td><strong>Jamat Khana</strong></td><td>{formData.JamatKhanaId}</td></tr>
-              <tr><td><strong>Household CNIC</strong></td><td>{formData.HouseHoldCNIC}</td></tr>
-              <tr><td><strong>Form Status</strong></td><td>{formData.FormStatus}</td></tr>
-              <tr><td><strong>Created</strong></td><td>{formData.CreatedAt}</td></tr>
-              <tr><td><strong>Updated</strong></td><td>{formData.UpdatedAt}</td></tr>
-            </tbody>
-          </table>
+        <div className="hp-results">
 
+          {/* ── Household info grid ── */}
+          <div className="hp-section-header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+            <h2>Household Info</h2>
+          </div>
+          <div className="hp-info-grid">
+            <div className="hp-info-cell"><span className="hp-info-label">Form ID</span><span className="hp-info-value mono">{formData.FormId}</span></div>
+            <div className="hp-info-cell"><span className="hp-info-label">Jamat Khana</span><span className="hp-info-value">{formData.JamatKhanaId}</span></div>
+            <div className="hp-info-cell"><span className="hp-info-label">Household CNIC</span><span className="hp-info-value mono">{formData.HouseHoldCNIC}</span></div>
+            <div className="hp-info-cell"><span className="hp-info-label">Form Status</span><span className="hp-info-value">{formData.FormStatus}</span></div>
+            <div className="hp-info-cell"><span className="hp-info-label">Created</span><span className="hp-info-value">{formData.CreatedAt ? new Date(formData.CreatedAt).toLocaleString() : '—'}</span></div>
+            <div className="hp-info-cell"><span className="hp-info-label">Updated</span><span className="hp-info-value">{formData.UpdatedAt ? new Date(formData.UpdatedAt).toLocaleString() : '—'}</span></div>
+          </div>
+
+          {/* ── Family members table ── */}
           {formData.FamilyMembers?.length > 0 ? (
             <>
-              <h2>Family Members</h2>
-              <table className="tbl">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>CNIC</th>
-                    <th>Intent</th>
-                    <th>Intent Event</th>
-                    <th>Wristband</th>
-                    <th>QR</th>
-                    <th>Event</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {formData.FamilyMembers.map((m) => {
-                    const reg = rows?.find((r) => String(r.FamilyMemberId ?? r.familyMemberId) === String(m.Id))
-                    const intent = reg?.ApprovalStatus || reg?.approval_status || '—'
-                    const intentEventId = reg?.EventId ?? reg?.eventId
-                    const intentEventName = intentEventId != null ? (events.find(e => e.Id === intentEventId)?.Name || '—') : '—'
-                    const wbData = wristbandMap[String(m.Id)]
-                    const wbLabel = wbData == null ? '—' : wbData.wristbandChoice?.toLowerCase() === 'yes' ? 'Applied' : 'Not Applied'
-                    const qrVal = wbData?.qrScannedValue || ''
-                    const eventName = resolveEventName(qrVal, events)
-                    return (
-                      <tr key={m.Id}>
-                        <td>{m.FullName}</td>
-                        <td>{m.IdNumber}</td>
-                        <td>{intent}</td>
-                        <td>{intentEventName}</td>
-                        <td>{wbLabel}</td>
-                        <td>{qrVal || '—'}</td>
-                        <td>{eventName}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+              <div className="hp-section-header" style={{marginTop: '28px'}}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+                <h2>Family Members <span className="hp-count">{formData.FamilyMembers.length}</span></h2>
+              </div>
+              <div className="hp-table-wrap">
+                <table className="hp-tbl">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Name</th>
+                      <th>CNIC</th>
+                      <th>Intent</th>
+                      <th>Intent Event</th>
+                      <th>Wristband</th>
+                      <th>QR</th>
+                      <th>Event</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {formData.FamilyMembers.map((m, idx) => {
+                      const reg = rows?.find((r) => String(r.FamilyMemberId ?? r.familyMemberId) === String(m.Id))
+                      const intent = reg?.ApprovalStatus || reg?.approval_status || '—'
+                      const intentEventId = reg?.EventId ?? reg?.eventId
+                      const intentEventName = intentEventId != null ? (events.find(e => e.Id === intentEventId)?.Name || '—') : '—'
+                      const wbData = wristbandMap[String(m.Id)]
+                      const wbLabel = wbData == null ? '—' : wbData.wristbandChoice?.toLowerCase() === 'yes' ? 'Applied' : 'Not Applied'
+                      const qrVal = wbData?.qrScannedValue || ''
+                      const eventName = resolveEventName(qrVal, events)
+                      return (
+                        <tr key={m.Id}>
+                          <td className="hp-tbl-num">{idx + 1}</td>
+                          <td className="hp-tbl-name">{m.FullName}</td>
+                          <td><span className="mono">{m.IdNumber}</span></td>
+                          <td>{intent !== '—' ? <span className={`hp-badge hp-badge-${intent.toLowerCase()}`}>{intent}</span> : '—'}</td>
+                          <td>{intentEventName}</td>
+                          <td>{wbLabel !== '—' ? <span className={`hp-badge ${wbLabel === 'Applied' ? 'hp-badge-applied' : 'hp-badge-not'}`}>{wbLabel}</span> : '—'}</td>
+                          <td><span className="mono hp-qr">{qrVal || '—'}</span></td>
+                          <td>{eventName !== '—' ? <span className="hp-event-chip">{eventName}</span> : '—'}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </>
           ) : null}
         </div>
       ) : null}
-
     </div>
   )
 }
