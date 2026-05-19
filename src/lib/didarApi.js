@@ -211,3 +211,160 @@ export async function approveMember(familyId, familyMemberId) {
   const data = await r.json().catch(() => ({}))
   if (!r.ok) throw new Error(formatHttpError(r, data))
 }
+
+// ── Operator context ──────────────────────────────────────────────────
+
+export function getOperatorInfo() {
+  const token = sessionStorage.getItem('didar_access_token') || ''
+  if (!token) return { username: '', role: '', jkIds: [] }
+  try {
+    const parts = token.split('.')
+    if (parts.length < 2) return { username: '', role: '', jkIds: [] }
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+    const payload = JSON.parse(atob(base64))
+    return {
+      username: payload?.sub || payload?.username || payload?.email || payload?.name || '',
+      role: String(payload?.role || payload?.Role || payload?.UserType || payload?.user_type || ''),
+      jkIds: Array.isArray(payload?.JamatKhanaIds) ? payload.JamatKhanaIds : [],
+    }
+  } catch {
+    return { username: '', role: '', jkIds: [] }
+  }
+}
+
+export function getOperatorContext() {
+  try {
+    const event = sessionStorage.getItem('op_event')
+    return {
+      event: event ? JSON.parse(event) : null,
+      gate: sessionStorage.getItem('op_gate') || '',
+      session: sessionStorage.getItem('op_session') || '',
+    }
+  } catch {
+    return { event: null, gate: '', session: '' }
+  }
+}
+
+export function setOperatorContext(event, gate, session) {
+  sessionStorage.setItem('op_event', JSON.stringify(event))
+  sessionStorage.setItem('op_gate', gate)
+  sessionStorage.setItem('op_session', session)
+}
+
+export function clearOperatorContext() {
+  sessionStorage.removeItem('op_event')
+  sessionStorage.removeItem('op_gate')
+  sessionStorage.removeItem('op_session')
+}
+
+export function hasOperatorContext() {
+  return Boolean(sessionStorage.getItem('op_event') && sessionStorage.getItem('op_gate'))
+}
+
+// ── QR / CNIC lookup ─────────────────────────────────────────────────
+
+export async function fetchFormsByQR(qrCode) {
+  const base = getApiBase()
+  const q = new URLSearchParams({ QRCode: String(qrCode).trim(), PageNumber: '1', PageSize: '5' })
+  const r = await didarFetch(`${base}/queryforms/?${q}`, { method: 'GET' })
+  const data = await r.json().catch(() => null)
+  if (!r.ok) {
+    const errObj = data && typeof data === 'object' ? data : {}
+    throw new Error(formatHttpError(r, errObj))
+  }
+  const forms = data?.Forms || data?.forms || []
+  return Array.isArray(forms) ? forms : []
+}
+
+// ── Check-In ─────────────────────────────────────────────────────────
+
+export async function performCheckIn({ familyId, familyMemberId, eventId, gate, session, qrCode, checkInType }) {
+  const base = getApiBase()
+  const body = {
+    FamilyId: String(familyId),
+    FamilyMemberId: Number(familyMemberId),
+    EventId: Number(eventId),
+    Gate: gate,
+    Session: session,
+    QRCode: qrCode ? Number(qrCode) : null,
+    CheckInType: checkInType || 'Manual',
+    Timestamp: new Date().toISOString(),
+  }
+  const r = await didarFetch(`${base}/checkins/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  const data = await r.json().catch(() => ({}))
+  if (!r.ok) throw new Error(formatHttpError(r, data))
+  return data
+}
+
+export async function fetchCheckIns({ eventId, familyId, gate, pageNumber = 1, pageSize = 200 } = {}) {
+  const base = getApiBase()
+  const q = new URLSearchParams({ PageNumber: String(pageNumber), PageSize: String(pageSize) })
+  if (eventId) q.set('EventId', String(eventId))
+  if (familyId) q.set('FamilyId', String(familyId))
+  if (gate) q.set('Gate', gate)
+  const r = await didarFetch(`${base}/checkins/?${q}`, { method: 'GET' })
+  const data = await r.json().catch(() => null)
+  if (!r.ok) {
+    const errObj = data && typeof data === 'object' ? data : {}
+    throw new Error(formatHttpError(r, errObj))
+  }
+  if (Array.isArray(data)) return data
+  if (Array.isArray(data?.Items)) return data.Items
+  return []
+}
+
+// ── QR Binding ───────────────────────────────────────────────────────
+
+export async function bindQRToMember({ familyId, familyMemberId, qrCode }) {
+  const base = getApiBase()
+  const body = {
+    FamilyId: String(familyId),
+    FamilyMemberId: Number(familyMemberId),
+    QRCode: Number(qrCode),
+    Timestamp: new Date().toISOString(),
+  }
+  const r = await didarFetch(`${base}/qr-binding/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  const data = await r.json().catch(() => ({}))
+  if (!r.ok) throw new Error(formatHttpError(r, data))
+  return data
+}
+
+// ── Dashboard ────────────────────────────────────────────────────────
+
+export async function fetchDashboardStats(eventId) {
+  const base = getApiBase()
+  const q = new URLSearchParams()
+  if (eventId) q.set('EventId', String(eventId))
+  const r = await didarFetch(`${base}/dashboard/stats?${q}`, { method: 'GET' })
+  const data = await r.json().catch(() => null)
+  if (!r.ok) {
+    const errObj = data && typeof data === 'object' ? data : {}
+    throw new Error(formatHttpError(r, errObj))
+  }
+  return data
+}
+
+// ── Audit Logs ───────────────────────────────────────────────────────
+
+export async function fetchAuditLogs({ eventId, pageNumber = 1, pageSize = 50 } = {}) {
+  const base = getApiBase()
+  const q = new URLSearchParams({ PageNumber: String(pageNumber), PageSize: String(pageSize) })
+  if (eventId) q.set('EventId', String(eventId))
+  const r = await didarFetch(`${base}/audit-logs/?${q}`, { method: 'GET' })
+  const data = await r.json().catch(() => null)
+  if (!r.ok) {
+    const errObj = data && typeof data === 'object' ? data : {}
+    throw new Error(formatHttpError(r, errObj))
+  }
+  if (Array.isArray(data)) return data
+  if (Array.isArray(data?.Items)) return data.Items
+  return []
+}
