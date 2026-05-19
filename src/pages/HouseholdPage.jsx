@@ -167,6 +167,8 @@ export default function HouseholdPage() {
           <div>
             <div className="hp-header-title">GBC QR Checker</div>
             <div className="hp-header-sub">Family Verification Portal</div>
+                                    <div className="login-brand-sub">For Regional council only</div>
+
           </div>
         </div>
         <button type="button" className="hp-logout" onClick={logout}>
@@ -236,7 +238,7 @@ export default function HouseholdPage() {
             <div className="hp-info-cell"><span className="hp-info-label">Form ID</span><span className="hp-info-value mono">{formData.FormId}</span></div>
             <div className="hp-info-cell"><span className="hp-info-label">Jamat Khana</span><span className="hp-info-value">{formData.JamatKhanaId}</span></div>
             <div className="hp-info-cell"><span className="hp-info-label">Household CNIC</span><span className="hp-info-value mono">{formData.HouseHoldCNIC}</span></div>
-            <div className="hp-info-cell"><span className="hp-info-label">Form Status</span><span className="hp-info-value">{formData.FormStatus}</span></div>
+            <div className="hp-info-cell"><span className="hp-info-label">Registration Form Status</span><span className="hp-info-value">{formData.FormStatus === 3 || formData.FormStatus === '3' ? <span className="hp-badge hp-badge-approved">Approved</span> : formData.FormStatus}</span></div>
             <div className="hp-info-cell"><span className="hp-info-label">Created</span><span className="hp-info-value">{formData.CreatedAt ? new Date(formData.CreatedAt).toLocaleString() : '—'}</span></div>
             <div className="hp-info-cell"><span className="hp-info-label">Updated</span><span className="hp-info-value">{formData.UpdatedAt ? new Date(formData.UpdatedAt).toLocaleString() : '—'}</span></div>
           </div>

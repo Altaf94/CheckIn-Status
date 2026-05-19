@@ -40,6 +40,8 @@ export default function LoginPage() {
           <div>
             <div className="login-brand-title">GBC QR Checker</div>
             <div className="login-brand-sub">Family Verification Portal</div>
+                        <div className="login-brand-sub">For Regional council only</div>
+
           </div>
         </div>
 
