@@ -55,6 +55,7 @@ export default function CheckInPage() {
   const [events, setEvents] = useState([])
   const [checkedInIds, setCheckedInIds] = useState(() => new Set())
   const [lastSearchType, setLastSearchType] = useState('')
+  const [lastSearchValue, setLastSearchValue] = useState('')
 
   // Action state
   const [checkingInId, setCheckingInId] = useState(null)
@@ -81,6 +82,7 @@ export default function CheckInPage() {
       const inputType = detectInputType(val)
       let fId = val
       setLastSearchType(inputType)
+      setLastSearchValue(val)
 
       if (inputType === 'cnic') {
         showMsg('Looking up CNIC…', 'info')
@@ -182,11 +184,11 @@ export default function CheckInPage() {
   function logout() { clearTokens(); clearOperatorContext(); navigate('/login', { replace: true }) }
   function changeSetup() { clearOperatorContext(); navigate('/setup', { replace: true }) }
 
-  const searchedValue = input.trim()
+  const searchedValue = lastSearchValue.trim()
   const searchedType = lastSearchType || detectInputType(searchedValue)
   const visibleMembers = (() => {
     const members = formData?.FamilyMembers || []
-    if (!searchedValue) return members
+    if (!searchedValue) return []
     if (searchedType === 'cnic') return members.filter(m => String(m.IdNumber) === searchedValue)
     if (searchedType === 'qr') {
       return members.filter(m => String(wristbandMap[String(m.Id)]?.qrScannedValue || '') === searchedValue)
