@@ -165,7 +165,7 @@ export default function HouseholdPage() {
             </svg>
           </div>
           <div>
-            <div className="hp-header-title">GBC QR Checker</div>
+            <div className="hp-header-title">GBC Check In</div>
             <div className="hp-header-sub">Family Verification Portal</div>
                                     <div className="login-brand-sub">For Regional council only</div>
 
