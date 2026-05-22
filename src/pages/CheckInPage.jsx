@@ -235,8 +235,9 @@ export default function CheckInPage() {
             placeholder="CNIC"
             autoComplete="off"
             autoFocus
+            maxLength={20}
             value={input}
-            onChange={e => setInput(e.target.value)}
+            onChange={e => setInput(e.target.value.slice(0, 20))}
             onKeyDown={e => { if (e.key === 'Enter') void handleSearch() }}
           />
           <button
