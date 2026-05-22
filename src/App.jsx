@@ -15,7 +15,6 @@ function AuthRoute({ children }) {
 /** Requires a valid session token AND operator context (event + gate) */
 function SetupRoute({ children }) {
   if (!isLoggedIn()) return <Navigate to="/login" replace />
-  if (!hasOperatorContext()) return <Navigate to="/setup" replace />
   return children
 }
 

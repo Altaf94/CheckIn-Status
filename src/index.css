@@ -325,7 +325,9 @@ input[type='password'] {
   justify-content: space-between;
   background: #fff;
   border-bottom: 1px solid #e5e7eb;
-  padding: 12px 24px;
+  padding: 16px 24px;
+  min-height: 64px;
+  overflow: visible;
   position: sticky;
   top: 0;
   z-index: 10;
@@ -339,10 +341,10 @@ input[type='password'] {
 }
 
 .hp-header-icon {
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
   background: linear-gradient(135deg, #0d9668, #0a7a54);
-  border-radius: 9px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -401,6 +403,37 @@ input[type='password'] {
   display: flex;
   gap: 10px;
 }
+
+/* Pill style search container */
+.hp-search-pill {
+  background: #fff;
+  border-radius: 14px;
+  padding: 10px;
+  align-items: center;
+  box-shadow: 0 1px 2px rgba(16,24,40,0.04);
+}
+
+.hp-search-input {
+  flex: 1;
+  padding: 12px 14px;
+  font-size: 14px;
+  border: 1.5px solid #eef2f1;
+  border-radius: 8px;
+  background: #f8fafb;
+}
+
+.hp-search-main { flex: 1 1 55%; }
+.hp-search-wrist { flex: 1 1 35%; }
+
+.hp-search-btn-green {
+  background: #10b981;
+  border-radius: 10px;
+  padding: 10px 18px;
+  color: #fff;
+  border: none;
+  font-weight: 700;
+}
+.hp-search-btn-green:hover:not(:disabled) { opacity: 0.95; transform: translateY(-1px); }
 
 .hp-search-input {
   flex: 1;
@@ -709,6 +742,27 @@ input[type='password'] {
 .ci-checkin-btn:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
 .ci-checkin-btn:active:not(:disabled) { transform: translateY(0); }
 .ci-checkin-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* Black primary check-in button used in compact table actions */
+.ci-checkin-black {
+  background: #0b0b0b;
+  color: #fff;
+  padding: 12px 22px;
+  min-width: 140px;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  white-space: normal;
+  line-height: 1.05;
+}
+.ci-checkin-black:disabled { opacity: 0.5; cursor: not-allowed; }
+.ci-checkin-black:hover:not(:disabled) { transform: translateY(-1px); }
 
 .ci-bind-btn {
   padding: 4px 12px;

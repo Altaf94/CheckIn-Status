@@ -196,6 +196,21 @@ export function resolveEventName(qrValue, events) {
   return '—'
 }
 
+export function resolveEventId(qrValue, events) {
+  if (!qrValue) return null
+  const qr = Number(qrValue)
+  if (!qr) return null
+  for (const ev of events) {
+    const start = Number(ev.QRCodeStartSeries)
+    const end = Number(ev.QRCodeEndSeries)
+    if (qr >= start && qr <= end) return ev.Id
+    const cStart = Number(ev.ChairQRCodeStartSeries)
+    const cEnd = Number(ev.ChairQRCodeEndSeries)
+    if (qr >= cStart && qr <= cEnd) return ev.Id
+  }
+  return null
+}
+
 export async function approveMember(familyId, familyMemberId) {
   const base = getApiBase()
   const outbound = {
@@ -278,19 +293,15 @@ export async function fetchFormsByQR(qrCode) {
 
 // ── Check-In ─────────────────────────────────────────────────────────
 
-export async function performCheckIn({ familyId, familyMemberId, eventId, gate, session, qrCode, checkInType }) {
+export async function performCheckIn({ familyId, familyMemberId, eventId, qrScannedValue }) {
   const base = getApiBase()
   const body = {
-    FamilyId: String(familyId),
-    FamilyMemberId: Number(familyMemberId),
-    EventId: Number(eventId),
-    Gate: gate,
-    Session: session,
-    QRCode: qrCode ? Number(qrCode) : null,
-    CheckInType: checkInType || 'Manual',
-    Timestamp: new Date().toISOString(),
+    familyId: String(familyId),
+    familyMemberId: Number(familyMemberId),
+    eventId: Number(eventId),
+    qrScannedValue: qrScannedValue ? String(qrScannedValue) : '',
   }
-  const r = await didarFetch(`${base}/checkins/`, {
+  const r = await didarFetch(`${base}/attendance/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
