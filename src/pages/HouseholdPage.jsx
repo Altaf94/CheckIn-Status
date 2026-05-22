@@ -262,7 +262,7 @@ export default function HouseholdPage() {
           </div>
           <div className="hp-info-grid">
             <div className="hp-info-cell"><span className="hp-info-label">Form ID</span><span className="hp-info-value mono">{formData.FormId}</span></div>
-            <div className="hp-info-cell"><span className="hp-info-label">Jamat Khana</span><span className="hp-info-value">{resolveJamatKhanaName(formData.JamatKhanaId, jamatKhanas)}</span></div>
+            <div className="hp-info-cell"><span className="hp-info-label">Jamat Khana</span><span className="hp-info-value">{formData.JamatKhanaId ? `${formData.JamatKhanaId} - ${resolveJamatKhanaName(formData.JamatKhanaId, jamatKhanas)}` : resolveJamatKhanaName(formData.JamatKhanaId, jamatKhanas)}</span></div>
             <div className="hp-info-cell"><span className="hp-info-label">Household CNIC</span><span className="hp-info-value mono">{formData.HouseHoldCNIC}</span></div>
             <div className="hp-info-cell"><span className="hp-info-label">Registration Form Status</span><span className="hp-info-value">{formData.FormStatus === 3 || formData.FormStatus === '3' ? <span className="hp-badge hp-badge-approved">Approved</span> : formData.FormStatus}</span></div>
             <div className="hp-info-cell"><span className="hp-info-label">Created</span><span className="hp-info-value">{formData.CreatedAt ? new Date(formData.CreatedAt).toLocaleString() : '—'}</span></div>
@@ -290,6 +290,7 @@ export default function HouseholdPage() {
                       <th>#</th>
                       <th>Name</th>
                       <th>CNIC</th>
+                      <th>Mobile</th>
                       <th>Relationship To Head</th>
                       <th>DOB</th>
                       <th>Gender</th>
@@ -312,6 +313,7 @@ export default function HouseholdPage() {
                       const qrVal = wbData?.qrScannedValue || ''
                       const eventName = resolveEventName(qrVal, events)
                       const relationshipToHead = relationshipToHeadName(m.RelationshipToHeadId)
+                      const mobileNumber = m.MobileNumber ?? '—'
                       const dob = m.MonthYearOfBirth ?? '—'
                       const gender = m.Gender ?? m.Sex ?? (m.GenderId === 1 ? 'Male' : m.GenderId === 2 ? 'Female' : m.GenderId === 3 ? 'Other' : '—')
                       const ismaili = m.CommunityAffiliation === true ? 'Yes' : m.CommunityAffiliation === false ? 'No' : '—'
@@ -320,6 +322,7 @@ export default function HouseholdPage() {
                           <td className="hp-tbl-num">{idx + 1}</td>
                           <td className="hp-tbl-name">{m.FullName}</td>
                           <td><span className="mono">{m.IdNumber}</span></td>
+                          <td>{mobileNumber}</td>
                           <td>{relationshipToHead}</td>
                           <td className="hp-tbl-dob">{dob}</td>
                           <td>{gender}</td>

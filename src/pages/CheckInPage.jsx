@@ -251,13 +251,13 @@ export default function CheckInPage() {
 
       {/* ── Search ── */}
       <div className="hp-search-card">
-        <label htmlFor="ci_input" className="hp-search-label">CNIC</label>
+        <label htmlFor="ci_input" className="hp-search-label">Form ID or CNIC</label>
         <div className="hp-search-row hp-search-pill">
           <input
             id="ci_input"
             type="text"
             className="hp-search-input hp-search-main"
-            placeholder="CNIC"
+            placeholder="Form ID or CNIC"
             autoComplete="off"
             autoFocus
             maxLength={20}
@@ -309,7 +309,7 @@ export default function CheckInPage() {
           </div>
           <div className="hp-info-grid" style={{ gridTemplateColumns: '1fr 1fr 1fr 1fr' }}>
             <div className="hp-info-cell"><span className="hp-info-label">Form ID</span><span className="hp-info-value mono">{formData.FormId}</span></div>
-            <div className="hp-info-cell"><span className="hp-info-label">Jamat Khana</span><span className="hp-info-value">{resolveJamatKhanaName(formData.JamatKhanaId, jamatKhanas)}</span></div>
+            <div className="hp-info-cell"><span className="hp-info-label">Jamat Khana</span><span className="hp-info-value">{formData.JamatKhanaId ? `${formData.JamatKhanaId} - ${resolveJamatKhanaName(formData.JamatKhanaId, jamatKhanas)}` : resolveJamatKhanaName(formData.JamatKhanaId, jamatKhanas)}</span></div>
             <div className="hp-info-cell"><span className="hp-info-label">Household CNIC</span><span className="hp-info-value mono">{formData.HouseHoldCNIC}</span></div>
             <div className="hp-info-cell">
               <span className="hp-info-label">Registration Status</span>
@@ -335,7 +335,7 @@ export default function CheckInPage() {
                 </svg>
                 <h2>
                   Family Members <span className="hp-count">{visibleMembers.length}</span>
-                  <span className="hp-badge hp-badge-not" style={{ marginLeft: 10 }}>Family Member: {formData.FamilyMembers?.length || 0}</span>
+                  {/* <span className="hp-badge hp-badge-not" style={{ marginLeft: 10 }}>Family Member: {formData.FamilyMembers?.length || 0}</span> */}
                   <span className="hp-badge hp-badge-applied" style={{ marginLeft: 10 }}>Wristband Issued: {wristbandIssuedCount}</span>
                 </h2>
               </div>
@@ -347,7 +347,8 @@ export default function CheckInPage() {
                       <th style={{ width: 40 }}>#</th>
                       <th>Name</th>
                       <th>CNIC</th>
-                      <th>Relationship To Head</th>
+                      <th>Mobile</th>
+                      {/* <th>Relationship To Head</th> */}
                       <th>DOB</th>
                       <th>Gender</th>
                       <th>Ismaili</th>
@@ -363,7 +364,7 @@ export default function CheckInPage() {
                       const reg = getRegistration(m.Id)
                       const wbData = wristbandMap[String(m.Id)]
                       const qrVal = wbData?.qrScannedValue || ''
-                      const wristLabel = qrVal && wbData?.wristbandChoice ? 'Assigned' : 'Not Applied'
+                      const wristLabel = qrVal && wbData?.wristbandChoice ? 'Applied' : 'Not Applied'
                       const alreadyIn = checkedInIds.has(String(m.Id))
                       const regEventName = reg
                         ? (events.find(e => String(e.Id) === String(reg.EventId ?? reg.eventId))?.Name || '—')
@@ -372,6 +373,7 @@ export default function CheckInPage() {
                       const isCheckingIn = checkingInId === String(m.Id)
                       const hasQr = Boolean(qrVal)
                       const relationshipToHead = relationshipToHeadName(m.RelationshipToHeadId)
+                      const mobileNumber = m.MobileNumber ?? '—'
                       const dob = m.MonthYearOfBirth ?? '—'
                       const gender = m.Gender ?? m.Sex ?? (m.GenderId === 1 ? 'Male' : m.GenderId === 2 ? 'Female' : m.GenderId === 3 ? 'Other' : '—')
                       const ismaili = m.CommunityAffiliation === true ? 'Yes' : m.CommunityAffiliation === false ? 'No' : '—'
@@ -381,16 +383,19 @@ export default function CheckInPage() {
                           <td className="hp-tbl-num">{idx + 1}</td>
                           <td className="hp-tbl-name">
                             <div>{m.FullName}</div>
-                            <div style={{ fontSize: 12, color: '#9ca3af', fontWeight: 500 }}>{m.Relationship || ''}</div>
+                            <div>
+                              <span className="hp-badge hp-badge-not" style={{ marginTop: 4, display: 'inline-block' }}>{relationshipToHead}</span>
+                            </div>
                           </td>
                           <td><span className="mono">{m.IdNumber}</span></td>
-                          <td>{relationshipToHead}</td>
+                          <td>{mobileNumber}</td>
+                          {/* <td>{relationshipToHead}</td> */}
                           <td className="hp-tbl-dob">{dob}</td>
                           <td>{gender}</td>
                           <td>{ismaili}</td>
                           <td>{regEventName !== '—' ? <span className="hp-event-chip">{regEventName}</span> : <span style={{ color: '#9ca3af' }}>—</span>}</td>
                           <td>{registerEventName !== '—' ? <span className="hp-event-chip">{registerEventName}</span> : <span style={{ color: '#9ca3af' }}>—</span>}</td>
-                          <td>{wristLabel === 'Assigned' ? <span style={{ color: '#10b981', fontWeight: 700 }}>{wristLabel}</span> : <span style={{ color: '#9ca3af' }}>{wristLabel}</span>}</td>
+                          <td>{wristLabel === 'Applied' ? <span style={{ color: '#10b981', fontWeight: 700 }}>{wristLabel}</span> : <span style={{ color: '#9ca3af' }}>{wristLabel}</span>}</td>
                           <td>{qrVal ? <span className="mono" style={{ color: '#10b981', fontWeight: 700 }}>{qrVal}</span> : <span style={{ color: '#f3f4f6' }}>—</span>}</td>
                           <td>
                             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
