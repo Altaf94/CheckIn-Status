@@ -423,8 +423,29 @@ input[type='password'] {
   background: #f8fafb;
 }
 
-.hp-search-main { flex: 1 1 55%; }
-.hp-search-wrist { flex: 1 1 35%; }
+.hp-search-main { flex: 1 1 0; min-width: 0; }
+.hp-search-wrist-wrap {
+  flex: 1 1 0;
+  min-width: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.hp-search-wrist-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9ca3af;
+  display: flex;
+  pointer-events: none;
+  z-index: 1;
+}
+.hp-search-wrist-wrap .hp-search-wrist {
+  flex: 1;
+  width: 100%;
+  padding-left: 40px;
+}
 
 .hp-search-btn-green {
   background: #10b981;

@@ -301,18 +301,53 @@ export function hasOperatorContext() {
 
 export async function fetchFormsByQR(qrCode) {
   const base = getApiBase()
-  const q = new URLSearchParams({ QRCode: String(qrCode).trim(), PageNumber: '1', PageSize: '5' })
-  const r = await didarFetch(`${base}/queryforms/?${q}`, { method: 'GET' })
+  const code = String(qrCode).trim()
+  if (!code) return []
+  const r = await didarFetch(`${base}/forms/by-qrcode/${encodeURIComponent(code)}`, { method: 'GET' })
+  const data = await r.json().catch(() => null)
+  if (!r.ok) {
+    if (r.status === 404) return []
+    const errObj = data && typeof data === 'object' ? data : {}
+    throw new Error(formatHttpError(r, errObj))
+  }
+  if (data && (data.FormId || data.formId || data.FamilyId || data.familyId)) {
+    return [data]
+  }
+  const forms = data?.Forms || data?.forms
+  return Array.isArray(forms) ? forms : []
+}
+
+// ── Check-In ─────────────────────────────────────────────────────────
+
+function hasExistingAttendance(data) {
+  if (data == null) return false
+  if (Array.isArray(data)) return data.length > 0
+  if (typeof data === 'object') {
+    if (data.found === false || data.Found === false) return false
+    if (data.found === true || data.Found === true) return true
+    if (data.Id != null || data.id != null) return true
+    if (data.FamilyMemberId != null || data.familyMemberId != null) return true
+    return Object.keys(data).length > 0
+  }
+  return Boolean(data)
+}
+
+/** Returns whether this member already has an attendance record for the household. */
+export async function findAttendance({ familyId, familyMemberId }) {
+  const base = getApiBase()
+  const q = new URLSearchParams({
+    familyId: String(familyId).trim(),
+    familyMemberId: String(familyMemberId),
+  })
+  const r = await didarFetch(`${base}/attendance/find?${q}`, { method: 'GET' })
+  if (r.status === 404) return { checkedIn: false, record: null }
   const data = await r.json().catch(() => null)
   if (!r.ok) {
     const errObj = data && typeof data === 'object' ? data : {}
     throw new Error(formatHttpError(r, errObj))
   }
-  const forms = data?.Forms || data?.forms || []
-  return Array.isArray(forms) ? forms : []
+  return { checkedIn: hasExistingAttendance(data), record: data }
 }
-
-// ── Check-In ─────────────────────────────────────────────────────────
 
 export async function performCheckIn({ familyId, familyMemberId, eventId, qrScannedValue }) {
   const base = getApiBase()
