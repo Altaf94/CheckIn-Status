@@ -66,6 +66,7 @@ function FamilyMembersTable({
   checkedInIds,
   checkingInId,
   onCheckIn,
+  attendanceReady = true,
   interactive = true,
 }) {
   return (
@@ -126,8 +127,10 @@ function FamilyMembersTable({
                 <td>{qrVal ? <span className="mono" style={{ color: '#10b981', fontWeight: 700 }}>{qrVal}</span> : <span style={{ color: '#9ca3af' }}>—</span>}</td>
                 {interactive ? (
                   <td>
-                    <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                      {alreadyIn ? (
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', minHeight: 28 }}>
+                      {!attendanceReady ? (
+                        <span style={{ color: '#9ca3af', fontSize: 12 }}>…</span>
+                      ) : alreadyIn ? (
                         <span className="ci-done-mark">Checked In</span>
                       ) : hasQr ? (
                         <button
@@ -136,7 +139,7 @@ function FamilyMembersTable({
                           disabled={isCheckingIn}
                           onClick={() => void onCheckIn(m)}
                         >
-                          {isCheckingIn ? 'In…' : 'Check In'}
+                          Check In
                         </button>
                       ) : (
                         <span style={{ color: '#9ca3af' }}>—</span>
@@ -172,6 +175,7 @@ export default function CheckInPage() {
   const [events, setEvents] = useState([])
   const [jamatKhanas, setJamatKhanas] = useState([])
   const [checkedInIds, setCheckedInIds] = useState(() => new Set())
+  const [attendanceReady, setAttendanceReady] = useState(false)
   const [lastSearchType, setLastSearchType] = useState('')
   const [lastSearchValue, setLastSearchValue] = useState('')
 
@@ -199,6 +203,7 @@ export default function CheckInPage() {
     setRegistrations([])
     setWristbandMap({})
     setCheckedInIds(new Set())
+    setAttendanceReady(false)
     clearMsg()
 
     try {
@@ -275,20 +280,31 @@ export default function CheckInPage() {
       if (e instanceof Error && e.message === 'SESSION_EXPIRED') { navigate('/login', { replace: true }); return }
       showMsg(e instanceof Error ? e.message : String(e), 'error')
     } finally {
+      setAttendanceReady(true)
       setLoading(false)
     }
   }, [cnicInput, qrInput, navigate, ctx.event])
 
   // ── Check-In ────────────────────────────────────────────────────────
   async function handleCheckIn(member) {
-    setCheckingInId(String(member.Id))
+    const memberId = String(member.Id)
+    if (checkedInIds.has(memberId)) return
+
+    const wbData = wristbandMap[memberId]
+    const registerEventId = resolveEventId(wbData?.qrScannedValue, events) || ctx.event?.Id
+    if (!registerEventId) {
+      showMsg('Register event not found for this QR.', 'error')
+      return
+    }
+
+    setCheckingInId(memberId)
+    setCheckedInIds((prev) => {
+      const next = new Set(prev)
+      next.add(memberId)
+      return next
+    })
+
     try {
-      const wbData = wristbandMap[String(member.Id)]
-      const registerEventId = resolveEventId(wbData?.qrScannedValue, events) || ctx.event?.Id
-      if (!registerEventId) {
-        showMsg('Register event not found for this QR.', 'error')
-        return
-      }
       await performCheckIn({
         familyId,
         familyMemberId: member.Id,
@@ -296,12 +312,12 @@ export default function CheckInPage() {
         qrScannedValue: wbData?.qrScannedValue || '',
       })
       showMsg(`${member.FullName} checked in successfully!`, 'success')
-      setCheckedInIds(prev => {
+    } catch (e) {
+      setCheckedInIds((prev) => {
         const next = new Set(prev)
-        next.add(String(member.Id))
+        next.delete(memberId)
         return next
       })
-    } catch (e) {
       if (e instanceof Error && e.message === 'SESSION_EXPIRED') { navigate('/login', { replace: true }); return }
       showMsg(e instanceof Error ? e.message : String(e), 'error')
     } finally {
@@ -497,6 +513,7 @@ export default function CheckInPage() {
                 checkedInIds={checkedInIds}
                 checkingInId={checkingInId}
                 onCheckIn={handleCheckIn}
+                attendanceReady={attendanceReady}
                 interactive
               />
             </>
