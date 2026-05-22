@@ -7,7 +7,9 @@ import {
   fetchFormById,
   fetchWristbandIssuances,
   fetchEvents,
+  fetchJamatKhanas,
   resolveEventName,
+  resolveJamatKhanaName,
   isAuthorizedForJK,
   // approveMember,
 } from '../lib/didarApi'
@@ -22,6 +24,7 @@ export default function HouseholdPage() {
   const [rows, setRows] = useState(null)
   const [wristbandMap, setWristbandMap] = useState({})
   const [events, setEvents] = useState([])
+  const [jamatKhanas, setJamatKhanas] = useState([])
   const [loading, setLoading] = useState(false)
   // const [approvingKey, setApprovingKey] = useState(null)
 
@@ -106,6 +109,10 @@ export default function HouseholdPage() {
       const evList = await fetchEvents()
       setEvents(evList)
 
+      setOk('Loading Jamat Khana list…')
+      const jkList = await fetchJamatKhanas()
+      setJamatKhanas(jkList)
+
       setRows(list)
       setMessage('')
     } catch (e) {
@@ -150,6 +157,25 @@ export default function HouseholdPage() {
 
   function onKeyDown(e) {
     if (e.key === 'Enter') handleSearch()
+  }
+
+  const wristbandIssuedCount = Object.values(wristbandMap).filter((m) => Boolean(m?.qrScannedValue)).length
+
+  const relationshipToHeadName = (id) => {
+    const map = {
+      1: 'Self - Household Head',
+      2: 'Spouse',
+      3: 'Child',
+      4: 'Parent',
+      5: 'Grand Parent',
+      6: 'Sibling',
+      7: 'Cousin',
+      8: 'Uncle / Aunt',
+      9: 'Nephew / Niece',
+      10: 'In Laws',
+      11: 'Grand Child',
+    }
+    return map[id] || '—'
   }
 
   return (
@@ -236,7 +262,7 @@ export default function HouseholdPage() {
           </div>
           <div className="hp-info-grid">
             <div className="hp-info-cell"><span className="hp-info-label">Form ID</span><span className="hp-info-value mono">{formData.FormId}</span></div>
-            <div className="hp-info-cell"><span className="hp-info-label">Jamat Khana</span><span className="hp-info-value">{formData.JamatKhanaId}</span></div>
+            <div className="hp-info-cell"><span className="hp-info-label">Jamat Khana</span><span className="hp-info-value">{resolveJamatKhanaName(formData.JamatKhanaId, jamatKhanas)}</span></div>
             <div className="hp-info-cell"><span className="hp-info-label">Household CNIC</span><span className="hp-info-value mono">{formData.HouseHoldCNIC}</span></div>
             <div className="hp-info-cell"><span className="hp-info-label">Registration Form Status</span><span className="hp-info-value">{formData.FormStatus === 3 || formData.FormStatus === '3' ? <span className="hp-badge hp-badge-approved">Approved</span> : formData.FormStatus}</span></div>
             <div className="hp-info-cell"><span className="hp-info-label">Created</span><span className="hp-info-value">{formData.CreatedAt ? new Date(formData.CreatedAt).toLocaleString() : '—'}</span></div>
@@ -251,7 +277,11 @@ export default function HouseholdPage() {
                   <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
                   <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                 </svg>
-                <h2>Family Members <span className="hp-count">{formData.FamilyMembers.length}</span></h2>
+                <h2>
+                  Family Members <span className="hp-count">{formData.FamilyMembers.length}</span>
+                  <span className="hp-badge hp-badge-not" style={{ marginLeft: 10 }}>Family Member: {formData.FamilyMembers.length}</span>
+                  <span className="hp-badge hp-badge-applied" style={{ marginLeft: 10 }}>Wristband Issued: {wristbandIssuedCount}</span>
+                </h2>
               </div>
               <div className="hp-table-wrap">
                 <table className="hp-tbl">
@@ -260,6 +290,10 @@ export default function HouseholdPage() {
                       <th>#</th>
                       <th>Name</th>
                       <th>CNIC</th>
+                      <th>Relationship To Head</th>
+                      <th>DOB</th>
+                      <th>Gender</th>
+                      <th>Ismaili</th>
                       <th>Intent</th>
                       <th>Intent Event</th>
                       <th>Wristband</th>
@@ -277,11 +311,19 @@ export default function HouseholdPage() {
                       const wbLabel = wbData == null ? '—' : wbData.wristbandChoice?.toLowerCase() === 'yes' ? 'Applied' : 'Not Applied'
                       const qrVal = wbData?.qrScannedValue || ''
                       const eventName = resolveEventName(qrVal, events)
+                      const relationshipToHead = relationshipToHeadName(m.RelationshipToHeadId)
+                      const dob = m.MonthYearOfBirth ?? '—'
+                      const gender = m.Gender ?? m.Sex ?? (m.GenderId === 1 ? 'Male' : m.GenderId === 2 ? 'Female' : m.GenderId === 3 ? 'Other' : '—')
+                      const ismaili = m.CommunityAffiliation === true ? 'Yes' : m.CommunityAffiliation === false ? 'No' : '—'
                       return (
                         <tr key={m.Id}>
                           <td className="hp-tbl-num">{idx + 1}</td>
                           <td className="hp-tbl-name">{m.FullName}</td>
                           <td><span className="mono">{m.IdNumber}</span></td>
+                          <td>{relationshipToHead}</td>
+                          <td className="hp-tbl-dob">{dob}</td>
+                          <td>{gender}</td>
+                          <td>{ismaili}</td>
                           <td>{intent !== '—' ? <span className={`hp-badge hp-badge-${intent.toLowerCase()}`}>{intent}</span> : '—'}</td>
                           <td>{intentEventName}</td>
                           <td>{wbLabel !== '—' ? <span className={`hp-badge ${wbLabel === 'Applied' ? 'hp-badge-applied' : 'hp-badge-not'}`}>{wbLabel}</span> : '—'}</td>

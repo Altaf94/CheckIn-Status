@@ -181,6 +181,27 @@ export async function fetchEvents() {
   return data
 }
 
+export async function fetchJamatKhanas() {
+  const base = getApiBase()
+  const r = await didarFetch(`${base}/jamatkhanas/`, { method: 'GET' })
+  const data = await r.json().catch(() => null)
+  if (!r.ok) {
+    const errObj = data && typeof data === 'object' ? data : {}
+    throw new Error(formatHttpError(r, errObj))
+  }
+  if (!Array.isArray(data)) throw new Error('Expected a JSON array from the jamatkhanas API')
+  return data
+}
+
+export function resolveJamatKhanaName(jamatKhanaId, list) {
+  if (!jamatKhanaId) return '—'
+  if (!Array.isArray(list) || !list.length) return String(jamatKhanaId)
+  const normalise = (v) => String(v).replace(/[^A-Z0-9]/gi, '').toUpperCase()
+  const target = normalise(jamatKhanaId)
+  const found = list.find((jk) => normalise(jk?.Id) === target)
+  return found?.Name || String(jamatKhanaId)
+}
+
 export function resolveEventName(qrValue, events) {
   if (!qrValue) return '—'
   const qr = Number(qrValue)

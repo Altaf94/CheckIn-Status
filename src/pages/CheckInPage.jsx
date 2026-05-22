@@ -9,8 +9,10 @@ import {
   fetchRegistrations,
   fetchWristbandIssuances,
   fetchEvents,
+  fetchJamatKhanas,
   resolveEventName,
   resolveEventId,
+  resolveJamatKhanaName,
   isAuthorizedForJK,
   getOperatorContext,
   getOperatorInfo,
@@ -53,6 +55,7 @@ export default function CheckInPage() {
   const [registrations, setRegistrations] = useState([])
   const [wristbandMap, setWristbandMap] = useState({})
   const [events, setEvents] = useState([])
+  const [jamatKhanas, setJamatKhanas] = useState([])
   const [checkedInIds, setCheckedInIds] = useState(() => new Set())
   const [lastSearchType, setLastSearchType] = useState('')
   const [lastSearchValue, setLastSearchValue] = useState('')
@@ -116,10 +119,11 @@ export default function CheckInPage() {
       setFamilyId(fId)
 
       showMsg('Loading attendance data…', 'info')
-      const [regs, wb, evList, ciList] = await Promise.allSettled([
+      const [regs, wb, evList, jkList] = await Promise.allSettled([
         fetchRegistrations(fId),
         fetchWristbandIssuances(fId),
         fetchEvents(),
+        fetchJamatKhanas(),
       ])
 
       setRegistrations(regs.status === 'fulfilled' ? regs.value : [])
@@ -136,6 +140,7 @@ export default function CheckInPage() {
       }
       setWristbandMap(wbLookup)
       setEvents(evList.status === 'fulfilled' ? evList.value : [])
+      setJamatKhanas(jkList.status === 'fulfilled' ? jkList.value : [])
       clearMsg()
 
     } catch (e) {
@@ -177,6 +182,23 @@ export default function CheckInPage() {
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────
+  const relationshipToHeadName = (id) => {
+    const map = {
+      1: 'Self - Household Head',
+      2: 'Spouse',
+      3: 'Child',
+      4: 'Parent',
+      5: 'Grand Parent',
+      6: 'Sibling',
+      7: 'Cousin',
+      8: 'Uncle / Aunt',
+      9: 'Nephew / Niece',
+      10: 'In Laws',
+      11: 'Grand Child',
+    }
+    return map[id] || '—'
+  }
+
   function getRegistration(memberId) {
     return registrations.find(r => String(r.FamilyMemberId ?? r.familyMemberId) === String(memberId))
   }
@@ -195,6 +217,7 @@ export default function CheckInPage() {
     }
     return members
   })()
+  const wristbandIssuedCount = Object.values(wristbandMap).filter((m) => Boolean(m?.qrScannedValue)).length
 
   // ── Render ──────────────────────────────────────────────────────────
   return (
@@ -286,7 +309,7 @@ export default function CheckInPage() {
           </div>
           <div className="hp-info-grid" style={{ gridTemplateColumns: '1fr 1fr 1fr 1fr' }}>
             <div className="hp-info-cell"><span className="hp-info-label">Form ID</span><span className="hp-info-value mono">{formData.FormId}</span></div>
-            <div className="hp-info-cell"><span className="hp-info-label">Jamat Khana</span><span className="hp-info-value">{formData.JamatKhanaId}</span></div>
+            <div className="hp-info-cell"><span className="hp-info-label">Jamat Khana</span><span className="hp-info-value">{resolveJamatKhanaName(formData.JamatKhanaId, jamatKhanas)}</span></div>
             <div className="hp-info-cell"><span className="hp-info-label">Household CNIC</span><span className="hp-info-value mono">{formData.HouseHoldCNIC}</span></div>
             <div className="hp-info-cell">
               <span className="hp-info-label">Registration Status</span>
@@ -310,7 +333,11 @@ export default function CheckInPage() {
                   <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
                   <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
                 </svg>
-                <h2>Family Members <span className="hp-count">{visibleMembers.length}</span></h2>
+                <h2>
+                  Family Members <span className="hp-count">{visibleMembers.length}</span>
+                  <span className="hp-badge hp-badge-not" style={{ marginLeft: 10 }}>Family Member: {formData.FamilyMembers?.length || 0}</span>
+                  <span className="hp-badge hp-badge-applied" style={{ marginLeft: 10 }}>Wristband Issued: {wristbandIssuedCount}</span>
+                </h2>
               </div>
 
               <div className="hp-table-wrap">
@@ -320,6 +347,10 @@ export default function CheckInPage() {
                       <th style={{ width: 40 }}>#</th>
                       <th>Name</th>
                       <th>CNIC</th>
+                      <th>Relationship To Head</th>
+                      <th>DOB</th>
+                      <th>Gender</th>
+                      <th>Ismaili</th>
                       <th>Intent Event</th>
                       <th>Register Event</th>
                       <th>Wristband</th>
@@ -332,13 +363,18 @@ export default function CheckInPage() {
                       const reg = getRegistration(m.Id)
                       const wbData = wristbandMap[String(m.Id)]
                       const qrVal = wbData?.qrScannedValue || ''
-                      const wristLabel = wbData?.wristbandChoice ? 'Assigned' : ''
+                      const wristLabel = qrVal && wbData?.wristbandChoice ? 'Assigned' : 'Not Applied'
                       const alreadyIn = checkedInIds.has(String(m.Id))
                       const regEventName = reg
                         ? (events.find(e => String(e.Id) === String(reg.EventId ?? reg.eventId))?.Name || '—')
                         : '—'
                       const registerEventName = resolveEventName(qrVal, events)
                       const isCheckingIn = checkingInId === String(m.Id)
+                      const hasQr = Boolean(qrVal)
+                      const relationshipToHead = relationshipToHeadName(m.RelationshipToHeadId)
+                      const dob = m.MonthYearOfBirth ?? '—'
+                      const gender = m.Gender ?? m.Sex ?? (m.GenderId === 1 ? 'Male' : m.GenderId === 2 ? 'Female' : m.GenderId === 3 ? 'Other' : '—')
+                      const ismaili = m.CommunityAffiliation === true ? 'Yes' : m.CommunityAffiliation === false ? 'No' : '—'
 
                       return (
                         <tr key={m.Id} className={alreadyIn ? 'ci-row-checkedin' : ''}>
@@ -348,15 +384,19 @@ export default function CheckInPage() {
                             <div style={{ fontSize: 12, color: '#9ca3af', fontWeight: 500 }}>{m.Relationship || ''}</div>
                           </td>
                           <td><span className="mono">{m.IdNumber}</span></td>
+                          <td>{relationshipToHead}</td>
+                          <td className="hp-tbl-dob">{dob}</td>
+                          <td>{gender}</td>
+                          <td>{ismaili}</td>
                           <td>{regEventName !== '—' ? <span className="hp-event-chip">{regEventName}</span> : <span style={{ color: '#9ca3af' }}>—</span>}</td>
                           <td>{registerEventName !== '—' ? <span className="hp-event-chip">{registerEventName}</span> : <span style={{ color: '#9ca3af' }}>—</span>}</td>
-                          <td>{wristLabel ? <span style={{ color: '#10b981', fontWeight: 700 }}>{wristLabel}</span> : <span style={{ color: '#9ca3af' }}>—</span>}</td>
+                          <td>{wristLabel === 'Assigned' ? <span style={{ color: '#10b981', fontWeight: 700 }}>{wristLabel}</span> : <span style={{ color: '#9ca3af' }}>{wristLabel}</span>}</td>
                           <td>{qrVal ? <span className="mono" style={{ color: '#10b981', fontWeight: 700 }}>{qrVal}</span> : <span style={{ color: '#f3f4f6' }}>—</span>}</td>
                           <td>
                             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                               {alreadyIn ? (
                                 <span className="ci-done-mark">Checked In</span>
-                              ) : (
+                              ) : hasQr ? (
                                 <>
                                   <button
                                     type="button"
@@ -367,6 +407,8 @@ export default function CheckInPage() {
                                     {isCheckingIn ? 'In…' : 'Check In'}
                                   </button>
                                 </>
+                              ) : (
+                                <span style={{ color: '#9ca3af' }}>—</span>
                               )}
                             </div>
                           </td>
