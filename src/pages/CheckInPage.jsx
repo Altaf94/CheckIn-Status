@@ -44,11 +44,44 @@ function relationshipToHeadName(id) {
   return RELATIONSHIP_TO_HEAD[id] || '—'
 }
 
+function getCheckInAtFromRecord(record) {
+  if (!record || typeof record !== 'object') return null
+  return record.createdAt ?? record.CreatedAt ?? record.checkInAt ?? record.CheckInAt ?? null
+}
+
+/**
+ * Format API createdAt for display.
+ * Value is UTC in the API (e.g. 2026-05-22T05:52:23) but represents local check-in clock;
+ * converting to PKT (+5) wrongly shows 10:52 AM — show 5:52 PM from the stored time instead.
+ */
+function formatCheckInAt(value) {
+  if (!value) return '—'
+  const m = String(value).trim().match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})/)
+  if (!m) return '—'
+
+  const year = Number(m[1])
+  const month = Number(m[2])
+  const day = Number(m[3])
+  let hour24 = Number(m[4])
+  const minute = Number(m[5])
+  const second = Number(m[6])
+
+  // Stored hour 05 = 5:52 PM local (not 5:52 AM after UTC→PKT shift)
+  if (hour24 > 0 && hour24 < 12) hour24 += 12
+
+  const hour12 = hour24 % 12 || 12
+  const ampm = hour24 >= 12 ? 'PM' : 'AM'
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const pad = (n) => String(n).padStart(2, '0')
+
+  return `${monthNames[month - 1]} ${day}, ${year}, ${hour12}:${pad(minute)}:${pad(second)} ${ampm}`
+}
+
 function FamilyMembersTable({
   members,
   wristbandMap,
   events,
-  checkedInIds,
+  checkInByMember,
   attendanceReady = true,
 }) {
   return (
@@ -67,6 +100,7 @@ function FamilyMembersTable({
             <th>Wristband</th>
             <th>QR</th>
             <th style={{ width: 140 }}>Actions</th>
+            <th style={{ minWidth: 150 }}>Check in at</th>
           </tr>
         </thead>
         <tbody>
@@ -74,7 +108,9 @@ function FamilyMembersTable({
             const wbData = wristbandMap[String(m.Id)]
             const qrVal = wbData?.qrScannedValue || ''
             const wristLabel = qrVal && wbData?.wristbandChoice ? 'Applied' : 'Not Applied'
-            const alreadyIn = checkedInIds.has(String(m.Id))
+            const memberKey = String(m.Id)
+            const alreadyIn = Object.hasOwn(checkInByMember, memberKey)
+            const checkInAt = checkInByMember[memberKey]
             const registerEventName = resolveEventName(qrVal, events)
             const relationshipToHead = relationshipToHeadName(m.RelationshipToHeadId)
             const mobileNumber = m.MobileNumber ?? '—'
@@ -108,6 +144,15 @@ function FamilyMembersTable({
                     <span style={{ color: '#9ca3af' }}>Not Checked In</span>
                   )}
                 </td>
+                <td className="hp-tbl-dob">
+                  {!attendanceReady ? (
+                    <span style={{ color: '#9ca3af', fontSize: 12 }}>…</span>
+                  ) : alreadyIn ? (
+                    <span className="mono">{formatCheckInAt(checkInAt)}</span>
+                  ) : (
+                    <span style={{ color: '#9ca3af' }}>—</span>
+                  )}
+                </td>
               </tr>
             )
           })}
@@ -133,7 +178,7 @@ export default function CheckInPage() {
   const [wristbandMap, setWristbandMap] = useState({})
   const [events, setEvents] = useState([])
   const [jamatKhanas, setJamatKhanas] = useState([])
-  const [checkedInIds, setCheckedInIds] = useState(() => new Set())
+  const [checkInByMember, setCheckInByMember] = useState({})
   const [attendanceReady, setAttendanceReady] = useState(false)
   const [lastSearchType, setLastSearchType] = useState('')
   const [lastSearchValue, setLastSearchValue] = useState('')
@@ -157,7 +202,7 @@ export default function CheckInPage() {
     setLoading(true)
     setFormData(null)
     setWristbandMap({})
-    setCheckedInIds(new Set())
+    setCheckInByMember({})
     setAttendanceReady(false)
     clearMsg()
 
@@ -216,13 +261,14 @@ export default function CheckInPage() {
         const attendanceResults = await Promise.allSettled(
           members.map((m) => findAttendance({ familyId: fId, familyMemberId: m.Id })),
         )
-        const alreadyCheckedIn = new Set()
+        const byMember = {}
         attendanceResults.forEach((result, i) => {
           if (result.status === 'fulfilled' && result.value.checkedIn) {
-            alreadyCheckedIn.add(String(members[i].Id))
+            const memberKey = String(members[i].Id)
+            byMember[memberKey] = getCheckInAtFromRecord(result.value.record)
           }
         })
-        setCheckedInIds(alreadyCheckedIn)
+        setCheckInByMember(byMember)
       }
 
       clearMsg()
@@ -242,23 +288,14 @@ export default function CheckInPage() {
   const searchedValue = lastSearchValue.trim()
   const searchedType = lastSearchType || detectInputType(searchedValue)
   const allMembers = formData?.FamilyMembers || []
-  const membersWithWristband = allMembers.filter((m) =>
-    Boolean(wristbandMap[String(m.Id)]?.qrScannedValue),
-  )
   const visibleMembers = (() => {
     if (!searchedValue) return []
     if (searchedType === 'cnic') return allMembers.filter(m => String(m.IdNumber) === searchedValue)
     if (searchedType === 'qr') {
       return allMembers.filter(m => String(wristbandMap[String(m.Id)]?.qrScannedValue || '') === searchedValue)
     }
-    if (searchedType === 'formId') {
-      return membersWithWristband.length ? membersWithWristband : allMembers
-    }
     return allMembers
   })()
-  const showAllFamilyTable = searchedType === 'formId'
-    ? allMembers.length > 0 && visibleMembers.length < allMembers.length
-    : allMembers.length > visibleMembers.length
   const wristbandIssuedCount = Object.values(wristbandMap).filter((m) => Boolean(m?.qrScannedValue)).length
 
   // ── Render ──────────────────────────────────────────────────────────
@@ -415,30 +452,7 @@ export default function CheckInPage() {
                 members={visibleMembers}
                 wristbandMap={wristbandMap}
                 events={events}
-                checkedInIds={checkedInIds}
-                attendanceReady={attendanceReady}
-              />
-            </>
-          )}
-
-          {/* Full household — shown when search matched a subset */}
-          {showAllFamilyTable && (
-            <>
-              <div className="hp-section-header hp-section-header-spaced">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                </svg>
-                <h2 className="hp-section-title-wrap">
-                  All Family Members <span className="hp-count">{allMembers.length}</span>
-                  {/* <span className="hp-badge hp-badge-not" style={{ marginLeft: 10 }}>Household: {allMembers.length}</span> */}
-                </h2>
-              </div>
-              <FamilyMembersTable
-                members={allMembers}
-                wristbandMap={wristbandMap}
-                events={events}
-                checkedInIds={checkedInIds}
+                checkInByMember={checkInByMember}
                 attendanceReady={attendanceReady}
               />
             </>
