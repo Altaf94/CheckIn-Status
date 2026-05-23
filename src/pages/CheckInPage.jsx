@@ -49,35 +49,24 @@ function getCheckInAtFromRecord(record) {
   return record.createdAt ?? record.CreatedAt ?? record.checkInAt ?? record.CheckInAt ?? null
 }
 
-const CHECK_IN_TIMEZONE = 'Asia/Karachi'
-
-const checkInAtFormatter = new Intl.DateTimeFormat('en-PK', {
-  timeZone: CHECK_IN_TIMEZONE,
-  month: 'short',
-  day: 'numeric',
-  year: 'numeric',
-  hour: 'numeric',
-  minute: '2-digit',
-  second: '2-digit',
-  hour12: true,
-})
-
-/** API createdAt is UTC; show in Asia/Karachi (PKT, UTC+5). */
-function parseAttendanceUtc(value) {
-  if (!value) return null
-  let s = String(value).trim()
-  if (!s) return null
-  if (!/[Zz]$|[+-]\d{2}(?::?\d{2})?$/.test(s) && s.includes('T')) {
-    s = `${s}Z`
-  }
-  const d = new Date(s)
-  return Number.isNaN(d.getTime()) ? null : d
-}
-
+/** API createdAt is Pakistan local time — show as-is in 12-hour format with AM/PM. */
 function formatCheckInAt(value) {
-  const d = parseAttendanceUtc(value)
-  if (!d) return '—'
-  return checkInAtFormatter.format(d)
+  if (!value) return '—'
+  const m = String(value).trim().match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})/)
+  if (!m) return '—'
+
+  const year = Number(m[1])
+  const month = Number(m[2])
+  const day = Number(m[3])
+  const hour24 = Number(m[4])
+  const minute = Number(m[5])
+  const second = Number(m[6])
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const pad = (n) => String(n).padStart(2, '0')
+  const hour12 = hour24 % 12 || 12
+  const ampm = hour24 >= 12 ? 'PM' : 'AM'
+
+  return `${monthNames[month - 1]} ${day}, ${year}, ${hour12}:${pad(minute)}:${pad(second)} ${ampm}`
 }
 
 function FamilyMembersTable({
