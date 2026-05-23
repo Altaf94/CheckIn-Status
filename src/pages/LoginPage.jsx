@@ -38,7 +38,7 @@ export default function LoginPage() {
             </svg>
           </div>
           <div>
-            <div className="login-brand-title">GBC Check In</div>
+            <div className="login-brand-title">GBC Check In Status</div>
             <div className="login-brand-sub">Family Verification Portal</div>
                         <div className="login-brand-sub">For Regional council only</div>
 

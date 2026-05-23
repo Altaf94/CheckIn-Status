@@ -191,7 +191,7 @@ export default function HouseholdPage() {
             </svg>
           </div>
           <div>
-            <div className="hp-header-title">GBC Check In</div>
+            <div className="hp-header-title">GBC Check In Status</div>
             <div className="hp-header-sub">Family Verification Portal</div>
                                     <div className="login-brand-sub">For Regional council only</div>
 
@@ -272,15 +272,15 @@ export default function HouseholdPage() {
           {/* ── Family members table ── */}
           {formData.FamilyMembers?.length > 0 ? (
             <>
-              <div className="hp-section-header" style={{marginTop: '28px'}}>
+              <div className="hp-section-header hp-section-header-spaced">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
                   <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                 </svg>
-                <h2>
+                <h2 className="hp-section-title-wrap">
                   Family Members <span className="hp-count">{formData.FamilyMembers.length}</span>
-                  <span className="hp-badge hp-badge-not" style={{ marginLeft: 10 }}>Family Member: {formData.FamilyMembers.length}</span>
-                  <span className="hp-badge hp-badge-applied" style={{ marginLeft: 10 }}>Wristband Issued: {wristbandIssuedCount}</span>
+                  <span className="hp-badge hp-badge-not">Family Member: {formData.FamilyMembers.length}</span>
+                  <span className="hp-badge hp-badge-applied">Wristband Issued: {wristbandIssuedCount}</span>
                 </h2>
               </div>
               <div className="hp-table-wrap">
@@ -296,7 +296,6 @@ export default function HouseholdPage() {
                       <th>Gender</th>
                       <th>Ismaili</th>
                       <th>Intent</th>
-                      <th>Intent Event</th>
                       <th>Wristband</th>
                       <th>QR</th>
                       <th>Event</th>
@@ -306,8 +305,6 @@ export default function HouseholdPage() {
                     {formData.FamilyMembers.map((m, idx) => {
                       const reg = rows?.find((r) => String(r.FamilyMemberId ?? r.familyMemberId) === String(m.Id))
                       const intent = reg?.ApprovalStatus || reg?.approval_status || '—'
-                      const intentEventId = reg?.EventId ?? reg?.eventId
-                      const intentEventName = intentEventId != null ? (events.find(e => e.Id === intentEventId)?.Name || '—') : '—'
                       const wbData = wristbandMap[String(m.Id)]
                       const wbLabel = wbData == null ? '—' : wbData.wristbandChoice?.toLowerCase() === 'yes' ? 'Applied' : 'Not Applied'
                       const qrVal = wbData?.qrScannedValue || ''
@@ -328,7 +325,6 @@ export default function HouseholdPage() {
                           <td>{gender}</td>
                           <td>{ismaili}</td>
                           <td>{intent !== '—' ? <span className={`hp-badge hp-badge-${intent.toLowerCase()}`}>{intent}</span> : '—'}</td>
-                          <td>{intentEventName}</td>
                           <td>{wbLabel !== '—' ? <span className={`hp-badge ${wbLabel === 'Applied' ? 'hp-badge-applied' : 'hp-badge-not'}`}>{wbLabel}</span> : '—'}</td>
                           <td><span className="mono hp-qr">{qrVal || '—'}</span></td>
                           <td>{eventName !== '—' ? <span className="hp-event-chip">{eventName}</span> : '—'}</td>

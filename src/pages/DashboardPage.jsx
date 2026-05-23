@@ -26,8 +26,8 @@ function NavHeader({ opInfo, ctx, onLogout }) {
           <div className="hp-header-sub">{ctx.event?.Name || 'All Events'}</div>
         </div>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <button type="button" className="ci-nav-btn" onClick={() => navigate('/checkin')}>Check-IN</button>
+      <div className="hp-header-actions">
+        <button type="button" className="ci-nav-btn" onClick={() => navigate('/checkin')}>Check In Status</button>
         {['admin', 'rc'].includes(opInfo.role?.toLowerCase()) && (
           <button type="button" className="ci-nav-btn" onClick={() => navigate('/audit')}>Audit Log</button>
         )}
@@ -232,14 +232,13 @@ export default function DashboardPage() {
         </div>
 
         {/* ── Recent Check-Ins ── */}
-        <div className="db-panel" style={{ marginTop: 20 }}>
+        <div className="db-panel db-panel-spaced">
           <div className="db-panel-header">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
             </svg>
             Recent Check-Ins
-            {/* Gate filter */}
-            <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <div className="db-panel-header-filters">
               {['All', ...gateNames].map(g => (
                 <button
                   key={g}

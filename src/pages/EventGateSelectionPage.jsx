@@ -43,7 +43,7 @@ export default function EventGateSelectionPage() {
 
   return (
     <div className="login-bg">
-      <div className="login-card" style={{ maxWidth: 480 }}>
+      <div className="login-card login-card-wide">
 
         {/* Page heading removed per UI update */}
 

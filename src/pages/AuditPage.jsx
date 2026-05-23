@@ -81,8 +81,8 @@ export default function AuditPage() {
             <div className="hp-header-sub">{ctx.event?.Name || 'All Events'}</div>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button type="button" className="ci-nav-btn" onClick={() => navigate('/checkin')}>Check-IN</button>
+        <div className="hp-header-actions">
+          <button type="button" className="ci-nav-btn" onClick={() => navigate('/checkin')}>Check In Status</button>
           <button type="button" className="ci-nav-btn" onClick={() => navigate('/dashboard')}>Dashboard</button>
           <button type="button" className="hp-logout" onClick={logout}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -96,8 +96,8 @@ export default function AuditPage() {
       <div className="db-container">
 
         {/* ── Filter toolbar ── */}
-        <div className="db-toolbar" style={{ flexWrap: 'wrap', gap: 8 }}>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        <div className="db-toolbar">
+          <div className="ci-filter-row">
             {ACTION_TYPES.map(t => (
               <button
                 key={t}
@@ -111,8 +111,7 @@ export default function AuditPage() {
           </div>
           <button
             type="button"
-            className="ci-nav-btn"
-            style={{ marginLeft: 'auto' }}
+            className="ci-nav-btn hp-toolbar-refresh"
             onClick={() => void loadLogs(1, false)}
           >
             Refresh

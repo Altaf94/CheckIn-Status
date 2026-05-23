@@ -6,17 +6,14 @@ import {
   fetchFormsByCnic,
   fetchFormById,
   fetchFormsByQR,
-  fetchRegistrations,
   fetchWristbandIssuances,
   fetchEvents,
   fetchJamatKhanas,
   resolveEventName,
-  resolveEventId,
   resolveJamatKhanaName,
   isAuthorizedForJK,
   getOperatorContext,
   getOperatorInfo,
-  performCheckIn,
   findAttendance,
 } from '../lib/didarApi'
 
@@ -27,17 +24,6 @@ function detectInputType(val) {
   if (/^\d{13,20}$/.test(v)) return 'cnic'
   if (/^\d+$/.test(v) && v.length <= 8) return 'qr'
   return 'formId'
-}
-
-// ── Member status logic ───────────────────────────────────────────────
-function getMemberStatus(member, registration, checkIn, wbData, currentEvent) {
-  if (!registration) return { label: 'Not Registered', cls: 'ci-status-unregistered' }
-  const eventMatches = currentEvent && String(registration.EventId ?? registration.eventId) === String(currentEvent.Id)
-  const hasQR = Boolean(wbData?.qrScannedValue)
-  if (checkIn) return { label: 'Checked-In', cls: 'ci-status-checkedin' }
-  if (!eventMatches) return { label: 'Wrong Event', cls: 'ci-status-wrong' }
-  if (!hasQR) return { label: 'QR Required', cls: 'ci-status-qr' }
-  return { label: 'Pending Check-In', cls: 'ci-status-pending' }
 }
 
 const RELATIONSHIP_TO_HEAD = {
@@ -60,14 +46,10 @@ function relationshipToHeadName(id) {
 
 function FamilyMembersTable({
   members,
-  getRegistration,
   wristbandMap,
   events,
   checkedInIds,
-  checkingInId,
-  onCheckIn,
   attendanceReady = true,
-  interactive = true,
 }) {
   return (
     <div className="hp-table-wrap">
@@ -81,26 +63,19 @@ function FamilyMembersTable({
             <th>DOB</th>
             <th>Gender</th>
             <th>Ismaili</th>
-            <th>Intent Event</th>
             <th>Register Event</th>
             <th>Wristband</th>
             <th>QR</th>
-            {interactive ? <th style={{ width: 220 }}>Actions</th> : null}
+            <th style={{ width: 140 }}>Actions</th>
           </tr>
         </thead>
         <tbody>
           {members.map((m, idx) => {
-            const reg = getRegistration(m.Id)
             const wbData = wristbandMap[String(m.Id)]
             const qrVal = wbData?.qrScannedValue || ''
             const wristLabel = qrVal && wbData?.wristbandChoice ? 'Applied' : 'Not Applied'
             const alreadyIn = checkedInIds.has(String(m.Id))
-            const regEventName = reg
-              ? (events.find(e => String(e.Id) === String(reg.EventId ?? reg.eventId))?.Name || '—')
-              : '—'
             const registerEventName = resolveEventName(qrVal, events)
-            const isCheckingIn = interactive && checkingInId === String(m.Id)
-            const hasQr = Boolean(qrVal)
             const relationshipToHead = relationshipToHeadName(m.RelationshipToHeadId)
             const mobileNumber = m.MobileNumber ?? '—'
             const dob = m.MonthYearOfBirth ?? '—'
@@ -121,32 +96,18 @@ function FamilyMembersTable({
                 <td className="hp-tbl-dob">{dob}</td>
                 <td>{gender}</td>
                 <td>{ismaili}</td>
-                <td>{regEventName !== '—' ? <span className="hp-event-chip">{regEventName}</span> : <span style={{ color: '#9ca3af' }}>—</span>}</td>
                 <td>{registerEventName !== '—' ? <span className="hp-event-chip">{registerEventName}</span> : <span style={{ color: '#9ca3af' }}>—</span>}</td>
                 <td>{wristLabel === 'Applied' ? <span style={{ color: '#10b981', fontWeight: 700 }}>{wristLabel}</span> : <span style={{ color: '#9ca3af' }}>{wristLabel}</span>}</td>
                 <td>{qrVal ? <span className="mono" style={{ color: '#10b981', fontWeight: 700 }}>{qrVal}</span> : <span style={{ color: '#9ca3af' }}>—</span>}</td>
-                {interactive ? (
-                  <td>
-                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', minHeight: 28 }}>
-                      {!attendanceReady ? (
-                        <span style={{ color: '#9ca3af', fontSize: 12 }}>…</span>
-                      ) : alreadyIn ? (
-                        <span className="ci-done-mark">Checked In</span>
-                      ) : hasQr ? (
-                        <button
-                          type="button"
-                          className="ci-bind-btn"
-                          disabled={isCheckingIn}
-                          onClick={() => void onCheckIn(m)}
-                        >
-                          Check In
-                        </button>
-                      ) : (
-                        <span style={{ color: '#9ca3af' }}>—</span>
-                      )}
-                    </div>
-                  </td>
-                ) : null}
+                <td>
+                  {!attendanceReady ? (
+                    <span style={{ color: '#9ca3af', fontSize: 12 }}>…</span>
+                  ) : alreadyIn ? (
+                    <span className="ci-done-mark">Checked In</span>
+                  ) : (
+                    <span style={{ color: '#9ca3af' }}>Not Checked In</span>
+                  )}
+                </td>
               </tr>
             )
           })}
@@ -169,8 +130,6 @@ export default function CheckInPage() {
 
   // Data state
   const [formData, setFormData] = useState(null)
-  const [familyId, setFamilyId] = useState('')
-  const [registrations, setRegistrations] = useState([])
   const [wristbandMap, setWristbandMap] = useState({})
   const [events, setEvents] = useState([])
   const [jamatKhanas, setJamatKhanas] = useState([])
@@ -178,9 +137,6 @@ export default function CheckInPage() {
   const [attendanceReady, setAttendanceReady] = useState(false)
   const [lastSearchType, setLastSearchType] = useState('')
   const [lastSearchValue, setLastSearchValue] = useState('')
-
-  // Action state
-  const [checkingInId, setCheckingInId] = useState(null)
 
   useEffect(() => {
     // Do not force redirect to /setup here — allow check-in page to load even without operator context.
@@ -200,7 +156,6 @@ export default function CheckInPage() {
 
     setLoading(true)
     setFormData(null)
-    setRegistrations([])
     setWristbandMap({})
     setCheckedInIds(new Set())
     setAttendanceReady(false)
@@ -234,17 +189,13 @@ export default function CheckInPage() {
       if (!isAuthorizedForJK(jkId)) { showMsg('Not authorised to view this household.', 'error'); return }
 
       setFormData(form)
-      setFamilyId(fId)
 
       showMsg('Loading attendance data…', 'info')
-      const [regs, wb, evList, jkList] = await Promise.allSettled([
-        fetchRegistrations(fId),
+      const [wb, evList, jkList] = await Promise.allSettled([
         fetchWristbandIssuances(fId),
         fetchEvents(),
         fetchJamatKhanas(),
       ])
-
-      setRegistrations(regs.status === 'fulfilled' ? regs.value : [])
 
       const wbRaw = wb.status === 'fulfilled' ? wb.value : null
       const wbLookup = {}
@@ -285,51 +236,6 @@ export default function CheckInPage() {
     }
   }, [cnicInput, qrInput, navigate, ctx.event])
 
-  // ── Check-In ────────────────────────────────────────────────────────
-  async function handleCheckIn(member) {
-    const memberId = String(member.Id)
-    if (checkedInIds.has(memberId)) return
-
-    const wbData = wristbandMap[memberId]
-    const registerEventId = resolveEventId(wbData?.qrScannedValue, events) || ctx.event?.Id
-    if (!registerEventId) {
-      showMsg('Register event not found for this QR.', 'error')
-      return
-    }
-
-    setCheckingInId(memberId)
-    setCheckedInIds((prev) => {
-      const next = new Set(prev)
-      next.add(memberId)
-      return next
-    })
-
-    try {
-      await performCheckIn({
-        familyId,
-        familyMemberId: member.Id,
-        eventId: registerEventId,
-        qrScannedValue: wbData?.qrScannedValue || '',
-      })
-      showMsg(`${member.FullName} checked in successfully!`, 'success')
-    } catch (e) {
-      setCheckedInIds((prev) => {
-        const next = new Set(prev)
-        next.delete(memberId)
-        return next
-      })
-      if (e instanceof Error && e.message === 'SESSION_EXPIRED') { navigate('/login', { replace: true }); return }
-      showMsg(e instanceof Error ? e.message : String(e), 'error')
-    } finally {
-      setCheckingInId(null)
-    }
-  }
-
-  // ── Helpers ─────────────────────────────────────────────────────────
-  function getRegistration(memberId) {
-    return registrations.find(r => String(r.FamilyMemberId ?? r.familyMemberId) === String(memberId))
-  }
-
   function logout() { clearTokens(); clearOperatorContext(); navigate('/login', { replace: true }) }
   function changeSetup() { clearOperatorContext(); navigate('/setup', { replace: true }) }
 
@@ -369,10 +275,10 @@ export default function CheckInPage() {
             </svg>
           </div>
           <div>
-            <div className="hp-header-title">GBC Check-IN</div>
+            <div className="hp-header-title">GBC Check In Status</div>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div className="hp-header-actions">
           {['admin', 'rc'].includes(operatorInfo.role?.toLowerCase()) && (
             <button type="button" className="ci-nav-btn" onClick={() => navigate('/audit')}>Audit Log</button>
           )}
@@ -474,7 +380,7 @@ export default function CheckInPage() {
             </svg>
             <h2>Household Info</h2>
           </div>
-          <div className="hp-info-grid" style={{ gridTemplateColumns: '1fr 1fr 1fr 1fr' }}>
+          <div className="hp-info-grid hp-info-grid-4">
             <div className="hp-info-cell"><span className="hp-info-label">Form ID</span><span className="hp-info-value mono">{formData.FormId}</span></div>
             <div className="hp-info-cell"><span className="hp-info-label">Jamat Khana</span><span className="hp-info-value">{formData.JamatKhanaId ? `${formData.JamatKhanaId} - ${resolveJamatKhanaName(formData.JamatKhanaId, jamatKhanas)}` : resolveJamatKhanaName(formData.JamatKhanaId, jamatKhanas)}</span></div>
             <div className="hp-info-cell"><span className="hp-info-label">Household CNIC</span><span className="hp-info-value mono">{formData.HouseHoldCNIC}</span></div>
@@ -489,32 +395,28 @@ export default function CheckInPage() {
 
             <div className="hp-info-cell"><span className="hp-info-label">Created</span><span className="hp-info-value mono">{formData.CreatedAt ? new Date(formData.CreatedAt).toLocaleString() : '—'}</span></div>
             <div className="hp-info-cell"><span className="hp-info-label">Updated</span><span className="hp-info-value mono">{formData.UpdatedAt ? new Date(formData.UpdatedAt).toLocaleString() : '—'}</span></div>
-            <div className="hp-info-cell" style={{ gridColumn: 'span 2' }} />
+            <div className="hp-info-cell hp-info-cell-span-2" />
           </div>
 
           {/* Matched member(s) — CNIC / QR search */}
           {visibleMembers.length > 0 && (
             <>
-              <div className="hp-section-header" style={{ marginTop: 28 }}>
+              <div className="hp-section-header hp-section-header-spaced">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
                   <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
                 </svg>
-                <h2>
+                <h2 className="hp-section-title-wrap">
                   Family Members <span className="hp-count">{visibleMembers.length}</span>
-                  <span className="hp-badge hp-badge-applied" style={{ marginLeft: 10 }}>Wristband Issued: {wristbandIssuedCount}</span>
+                  <span className="hp-badge hp-badge-applied">Wristband Issued: {wristbandIssuedCount}</span>
                 </h2>
               </div>
               <FamilyMembersTable
                 members={visibleMembers}
-                getRegistration={getRegistration}
                 wristbandMap={wristbandMap}
                 events={events}
                 checkedInIds={checkedInIds}
-                checkingInId={checkingInId}
-                onCheckIn={handleCheckIn}
                 attendanceReady={attendanceReady}
-                interactive
               />
             </>
           )}
@@ -522,25 +424,22 @@ export default function CheckInPage() {
           {/* Full household — shown when search matched a subset */}
           {showAllFamilyTable && (
             <>
-              <div className="hp-section-header" style={{ marginTop: 28 }}>
+              <div className="hp-section-header hp-section-header-spaced">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
                   <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
                 </svg>
-                <h2>
+                <h2 className="hp-section-title-wrap">
                   All Family Members <span className="hp-count">{allMembers.length}</span>
                   {/* <span className="hp-badge hp-badge-not" style={{ marginLeft: 10 }}>Household: {allMembers.length}</span> */}
                 </h2>
               </div>
               <FamilyMembersTable
                 members={allMembers}
-                getRegistration={getRegistration}
                 wristbandMap={wristbandMap}
                 events={events}
                 checkedInIds={checkedInIds}
-                checkingInId={checkingInId}
-                onCheckIn={handleCheckIn}
-                interactive={false}
+                attendanceReady={attendanceReady}
               />
             </>
           )}
